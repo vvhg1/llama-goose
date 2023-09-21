@@ -1,0 +1,55 @@
+{
+  "name": "llama-goose",
+  "displayName": "Llama Goose",
+  "description": "Inline code suggestions for VS Code from a (local) Llama LLM",
+  "version": "0.0.1",
+  "publisher": "vvhg1",
+  "icon": "icon.png",
+  "license": "MIT",
+  "repository": "https://github.com/vvhg1/llama-goose.git",
+  "engines": {
+    "vscode": "^1.82.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./extension",
+  "contributes": {
+    "configuration": {
+      "type": "object",
+      "title": "Llama Goose",
+      "properties": {
+        "llamaGoose.maxLines": {
+          "type": "number",
+          "default": 10,
+          "description": "The maximum number of lines to show in the suggestions."
+        },
+        "llamaGoose.maxContextSize": {
+          "type": "number",
+          "default": 512,
+          "description": "The maximum context for the model to use."
+        }
+      },
+      "commands": [
+        {
+          "command": "extension.getLlamaSuggestions",
+          "title": "Get Llama Suggestions"
+        }
+      ],
+      "keybindings": [
+        {
+          "command": "extension.getLlamaSuggestions",
+          "key": "",
+          "mac": "",
+          "when": "editorTextFocus"
+        }
+      ]
+    }
+  },
+  "dependencies": {
+    "vsce": "^2.15.0"
+  }
+}
