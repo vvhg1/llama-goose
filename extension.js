@@ -15,7 +15,8 @@ async function queryModel(in_prefix, in_suffix) {
     ongoingRequest = null; // Reset the ongoing request variable
   }
   logger.appendLine(`Querying model`);
-
+  loggerm.appendLine(`input_prefix:${in_prefix}`);
+  loggerm.appendLine(`input_suffix:${in_suffix}`);
   const postData = JSON.stringify({
     input_prefix: in_prefix,
     input_suffix: in_suffix,
@@ -40,11 +41,17 @@ async function queryModel(in_prefix, in_suffix) {
       try {
         const cutString = chunkString.substring(6);
         const json = JSON.parse(cutString);
+
+        if (json.content.trim() === "<EOT>") {
+          loggerm.appendLine(`got EOT`);
+          vscode.commands.executeCommand('editor.action.inlineSuggest.trigger');
+          return;
+        }
         loggerm.append(json.content);
         logger.appendLine(`reply stream            :${json.content}`);
         testInlineSuggestion += json.content;
         logger.appendLine(`testinline after model call: ${testInlineSuggestion}`);
-        vscode.commands.executeCommand('editor.action.triggerInlineSuggest');
+        vscode.commands.executeCommand('editor.action.inlineSuggest.trigger');
         logger.appendLine(`triggered completion?`);
       } catch (error) {
         loggerm.appendLine(`Error parsing JSON: ${error.message}`);
@@ -57,6 +64,7 @@ async function queryModel(in_prefix, in_suffix) {
     }
     );
     res.on('close', () => {
+      vscode.commands.executeCommand('editor.action.inlineSuggest.trigger');
       loggerm.appendLine(`Stream closed`);
       logger.appendLine(`Stream closed`);
     }
@@ -71,7 +79,12 @@ async function queryModel(in_prefix, in_suffix) {
   req.write(postData);
   req.end();
 }
-// 
+
+// when the cursor moves,
+vscode.window.onDidChangeTextEditorSelection((e) => {
+  logger.appendLine(`cursor moved`);
+});
+
 vscode.workspace.onDidChangeTextDocument((e) => {
   if (vscode.window.activeTextEditor.document === e.document) {
     let textchange = e.contentChanges[0].text;
@@ -80,9 +93,9 @@ vscode.workspace.onDidChangeTextDocument((e) => {
     let textBeforeCursor = e.document.getText(new vscode.Range(new vscode.Position(0, 0), realCursor));
     let textAfterCursor = e.document.getText(new vscode.Range(realCursor, new vscode.Position(e.document.lineCount, 0)));
     let currentLine = e.document.lineAt(realCursor.line);
-    let suggestionStart = currentLine.text.trimStart();
+    let suggestionStart = currentLine.text;
     // if testInlineSuggestion starts with suggestionStart, then we don't need to query the model
-    if (testInlineSuggestion.startsWith(suggestionStart)) {
+    if (testInlineSuggestion.startsWith(suggestionStart) && currentLine !== "") {
       logger.appendLine(`testInlineSuggestion starts with suggestionStart`);
     } else {
       testInlineSuggestion = suggestionStart;
@@ -102,9 +115,10 @@ function activate(context) {
         let range = line.range;
         logger.appendLine(`adding suggestion ${testInlineSuggestion}`);
         const suggestion = testInlineSuggestion;
-        range = new vscode.Range(range.start, range.start)
         items.push({
+          // text: suggestion,
           insertText: suggestion,
+          range: range,
         });
       } else {
         logger.appendLine(`flagging as complete`);
